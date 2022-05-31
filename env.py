@@ -5,6 +5,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.utils import set_random_seed
 from typing import Callable
+from copy import deepcopy
 
 
 kinematics_env_config = {
@@ -16,9 +17,9 @@ kinematics_env_config = {
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
         "type": "Kinematics",
-        "vehicles_count": 15,
-        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "order": "shuffled"
+        # "vehicles_count": 15,
+        # "features": ["presence", "x", "y", "vx", "vy"],
+        # "order": "shuffled"
     },
     "screen_width": 600,  # [px]
     "screen_height": 150,  # [px]
@@ -38,7 +39,8 @@ def make_env(num=1, obs_type=ObsType.Kinematics):
     def make_env_fn(rank: int, seed: int = 0) -> Callable:
         def _init() -> gym.Env:
             _env = gym.make("highway-v0")
-            _env.unwrapped.configure(ObsType.obs_type_2_config[obs_type])
+            config = deepcopy(ObsType.obs_type_2_config[obs_type])
+            _env.unwrapped.configure(config)
             _env.reset()
             _env = Monitor(_env)
             envs.append(_env)
@@ -51,3 +53,8 @@ def make_env(num=1, obs_type=ObsType.Kinematics):
         return make_env_fn(1, 1)()
     env = SubprocVecEnv([make_env_fn(i, i) for i in range(num)])
     return env
+
+
+if __name__ == '__main__':
+    env = make_env(1)
+    print(env.config)
