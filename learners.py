@@ -37,7 +37,7 @@ class LearnerFactory(object):
                     train_freq=1,
                     gradient_steps=1,
                     target_update_interval=50,
-                    exploration_fraction=0.7,
+                    exploration_fraction=0.3,
                     verbose=1,
                     tensorboard_log="./log/")
         return learner_name, model
