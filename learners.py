@@ -44,13 +44,13 @@ class LearnerFactory(object):
 
     @classmethod
     def PPO_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
-        n_cpu = 10
+        # n_cpu = 10
         learner_name = "PPO_Kinematics"
         batch_size = 64
         model = PPO('MlpPolicy', env,
                     learning_rate=5e-4,
                     policy_kwargs=dict(net_arch=[dict(pi=[256, 256], vf=[256, 256])]),
-                    n_steps=batch_size * n_cpu,
+                    n_steps=batch_size,
                     batch_size=batch_size,
                     n_epochs=10,
                     gamma=0.8,

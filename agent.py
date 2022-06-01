@@ -3,12 +3,14 @@ import sys
 import argparse
 import time
 
+import numpy as np
 import gym
 from itertools import count
 
 import learners
 from env import make_env
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
+from stable_baselines3.common.evaluation import evaluate_policy
 from learners import make_learner_fn
 from tqdm.notebook import tqdm
 from stable_baselines3.common.callbacks import BaseCallback
@@ -41,7 +43,7 @@ class Agent(object):
         parser.add_argument('--learner_type', type=str, default='DDPG',
                             help="Algorithm to train from {PPO, A2C, DQN, DDPG, TD3}")
         parser.add_argument('--parallels', type=int, default=1)
-        parser.add_argument('--nb_steps', type=int, default=int(10000*50), help="Number of training steps")
+        parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
         parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
         parser.add_argument('--init_weight_path', type=str, default=None, help="initial weight path.")
         parser.add_argument('--render', dest='render', action='store_true', help="Render environment while training")
@@ -73,6 +75,8 @@ class Agent(object):
                                                  name_prefix=prefix)
         # Separate evaluation env
         eval_env = make_env(1, obs_type)
+        mean_reward, _ = evaluate_policy(learner, eval_env, n_eval_episodes=5, deterministic=True, render=True)
+        print(f"initial 5 episodes mean_reward: {mean_reward}")
         eval_callback = EvalCallback(eval_env, best_model_save_path=os.path.join(weights_directory, prefix + '_best'),
                                      log_path='./log/', eval_freq=args.eval_interval_steps,
                                      deterministic=True, render=True)
@@ -107,8 +111,22 @@ class Agent(object):
             total_reward = sum(rewards)
             total_rewards.append(total_reward)
             steps.append(step)
+            if step == 50:
+                no_collisions.append(1)
+            else:
+                no_collisions.append(0)
+        mean_steps = np.mean(steps)
+        mean_total_rewards = np.mean(total_rewards)
+        no_collisions_count = np.count_nonzero(no_collisions)
+        print(f"mean_steps: {mean_steps}, mean_total_rewards: {mean_total_rewards}, no_collisions_count: {no_collisions_count}")
 
+def main():
+    agent = Agent()
+    args = agent.parse_args()
+    if args.mode == "test":
+        agent.test()
+    else:
+        agent.train()
 
 if __name__ == "__main__":
-    agent = Agent()
-    agent.train()
+    main()

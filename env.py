@@ -1,3 +1,5 @@
+import time
+
 import highway_env
 import gym
 from stable_baselines3.common.vec_env import SubprocVecEnv
@@ -17,9 +19,9 @@ kinematics_env_config = {
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
         "type": "Kinematics",
-        # "vehicles_count": 15,
-        # "features": ["presence", "x", "y", "vx", "vy"],
-        # "order": "shuffled"
+        "vehicles_count": 15,
+        "features": ["presence", "x", "y", "vx", "vy"],
+        "order": "shuffled"
     },
     "screen_width": 600,  # [px]
     "screen_height": 150,  # [px]
@@ -33,7 +35,9 @@ class ObsType:
         Kinematics: kinematics_env_config
     }
 
-def make_env(num=1, obs_type=ObsType.Kinematics):
+def make_env(num=1, obs_type=ObsType.Kinematics, seed=None):
+    if seed is None:
+        seed = int(time.time())
     envs = []
     # Create the vectorized environment
     def make_env_fn(rank: int, seed: int = 0) -> Callable:
@@ -50,8 +54,8 @@ def make_env(num=1, obs_type=ObsType.Kinematics):
         set_random_seed(seed)
         return _init
     if num == 1:
-        return make_env_fn(1, 1)()
-    env = SubprocVecEnv([make_env_fn(i, i) for i in range(num)])
+        return make_env_fn(1, seed)()
+    env = SubprocVecEnv([make_env_fn(i, i+seed) for i in range(num)])
     return env
 
 
