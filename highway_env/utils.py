@@ -98,6 +98,23 @@ def remap(v, x, y):
     return y[0] + (v-x[0])*(y[1]-y[0])/(x[1]-x[0])
 
 
+from typing import Tuple, Dict, Callable, List, Optional, Union, Sequence
+Vector = Union[np.ndarray, Sequence[float]]
+Matrix = Union[np.ndarray, Sequence[Sequence[float]]]
+Interval = Union[np.ndarray,
+                 Tuple[Vector, Vector],
+                 Tuple[Matrix, Matrix],
+                 Tuple[float, float],
+                 List[Vector],
+                 List[Matrix],
+                 List[float]]
+
+
+def lmap(v: float, x: Interval, y: Interval) -> float:
+    """Linear map of value v with range x to desired range y."""
+    return y[0] + (v - x[0]) * (y[1] - y[0]) / (x[1] - x[0])
+
+
 def class_from_path(path):
     module_name, class_name = path.rsplit(".", 1)
     class_object = getattr(importlib.import_module(module_name), class_name)

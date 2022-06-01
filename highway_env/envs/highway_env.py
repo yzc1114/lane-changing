@@ -4,6 +4,7 @@ from highway_env import utils
 from highway_env.envs.common.abstract import AbstractEnv
 from highway_env.road.road import Road, RoadNetwork
 from highway_env.vehicle.control import MDPVehicle
+import numpy as np
 
 
 class HighwayEnv(AbstractEnv):
@@ -20,7 +21,7 @@ class HighwayEnv(AbstractEnv):
     """ The reward received when driving on the right-most lanes, linearly mapped to zero for other lanes."""
     HIGH_VELOCITY_REWARD = 0.4
     """ The reward received when driving at full speed, linearly mapped to zero for lower speeds."""
-    LANE_CHANGE_REWARD = -0.05
+    LANE_CHANGE_REWARD = -0
     """ The reward received at each lane change action."""
 
     def default_config(self):
@@ -33,7 +34,8 @@ class HighwayEnv(AbstractEnv):
             "vehicles_count": 50,
             "duration": 40,  # [s]
             "initial_spacing": 2,
-            "collision_reward": self.COLLISION_REWARD
+            "collision_reward": self.COLLISION_REWARD,
+            "reward_speed_range": [20, 30],
         })
         return config
 
@@ -73,15 +75,29 @@ class HighwayEnv(AbstractEnv):
         :param action: the last action performed
         :return: the corresponding reward
         """
-        action_reward = {0: self.LANE_CHANGE_REWARD, 1: 0, 2: self.LANE_CHANGE_REWARD, 3: 0, 4: 0}
-        neighbours = self.road.network.all_side_lanes(self.vehicle.lane_index)
-        state_reward = \
-            + self.config["collision_reward"] * self.vehicle.crashed \
-            + self.RIGHT_LANE_REWARD * self.vehicle.target_lane_index[2] / (len(neighbours) - 1) \
-            + self.HIGH_VELOCITY_REWARD * self.vehicle.velocity_index / (self.vehicle.SPEED_COUNT - 1)
-        return utils.remap(action_reward[action] + state_reward,
-                           [self.config["collision_reward"], self.HIGH_VELOCITY_REWARD+self.RIGHT_LANE_REWARD],
-                           [0, 1])
+        # Use forward speed rather than speed, see https://github.com/eleurent/highway-env/issues/268
+        vehicle_speed = self.vehicle.index_to_speed(self.vehicle.velocity_index)
+        forward_speed = vehicle_speed * np.cos(self.vehicle.heading)
+        scaled_speed = utils.lmap(forward_speed, self.config["reward_speed_range"], [0, 1])
+        reward = \
+            + self.COLLISION_REWARD * self.vehicle.crashed \
+            + self.HIGH_VELOCITY_REWARD * np.clip(scaled_speed, 0, 1)
+        reward = utils.lmap(reward,
+                            [self.COLLISION_REWARD,
+                             self.HIGH_VELOCITY_REWARD + self.RIGHT_LANE_REWARD],
+                            [0, 1])
+        return reward
+
+        # action_reward = {0: self.LANE_CHANGE_REWARD, 1: 0, 2: self.LANE_CHANGE_REWARD, 3: 0, 4: 0}
+        # neighbours = self.road.network.all_side_lanes(self.vehicle.lane_index)
+        # state_reward = \
+        #     + self.config["collision_reward"] * self.vehicle.crashed \
+        #     + self.RIGHT_LANE_REWARD * self.vehicle.target_lane_index[2] / (len(neighbours) - 1) \
+        #     + self.HIGH_VELOCITY_REWARD * self.vehicle.velocity_index / (self.vehicle.SPEED_COUNT - 1)
+        # reward = utils.remap(action_reward[action] + state_reward,
+        #                    [self.config["collision_reward"], self.HIGH_VELOCITY_REWARD+self.RIGHT_LANE_REWARD],
+        #                    [0, 1])
+        # return reward
 
     def _is_terminal(self):
         """

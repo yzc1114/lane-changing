@@ -4,6 +4,7 @@ import env
 import highway_env
 from stable_baselines3 import DQN, PPO, A2C
 from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from typing import Tuple
 from env import ObsType
 
@@ -37,20 +38,20 @@ class LearnerFactory(object):
                     train_freq=1,
                     gradient_steps=1,
                     target_update_interval=50,
-                    exploration_fraction=0.3,
                     verbose=1,
                     tensorboard_log="./log/")
         return learner_name, model
 
     @classmethod
     def PPO_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
-        # n_cpu = 10
+        assert isinstance(env, SubprocVecEnv)
+        n_envs = env.num_envs
         learner_name = "PPO_Kinematics"
         batch_size = 64
         model = PPO('MlpPolicy', env,
                     learning_rate=5e-4,
                     policy_kwargs=dict(net_arch=[dict(pi=[256, 256], vf=[256, 256])]),
-                    n_steps=batch_size,
+                    n_steps=batch_size * 12 // n_envs,
                     batch_size=batch_size,
                     n_epochs=10,
                     gamma=0.8,
@@ -62,11 +63,11 @@ class LearnerFactory(object):
     def A2C_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
         learner_name = "A2C_Kinematics"
         model = A2C('MlpPolicy', env,
-                    policy_kwargs=dict(net_arch=[256, 256, dict(vf=[256, 128], pi=[64])]),
+                    policy_kwargs=dict(net_arch=[dict(pi=[256, 256], vf=[256, 256])]),
                     learning_rate=5e-4,
                     gamma=0.8,
                     n_steps=6,
-                    verbose=1,
+                    verbose=2,
                     tensorboard_log="./log/")
         return learner_name, model
 

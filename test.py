@@ -10,9 +10,10 @@ def do_test_env():
     steps = 0
     while not done:
         action = np.random.randint(5)
-        obs, reward, done, _ = e.step(action)
+        obs, reward, done, _ = e.step(4)
+        print(f"reward: {reward}")
         # print(obs.shape)
-        # e.render()
+        e.render()
         steps += 1
         print(steps)
 
