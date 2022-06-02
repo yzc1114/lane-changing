@@ -5,23 +5,23 @@ from highway_env import utils
 from highway_env.envs import ParkingEnv
 from highway_env.road.lane import StraightLane, LineType
 from highway_env.road.road import Road, RoadNetwork
-from highway_env.vehicle.kinematics import Vehicle, Obstacle
+from highway_env.vehicle.kinematics import Vehicle
+from highway_env.vehicle.objects import Landmark
 
 
 class SummonEnv(ParkingEnv):
-    """
-        A continuous control environment.
 
-        It implements a reach-type task, where the agent observes their position and velocity and must
-        control their acceleration and steering so as to reach a given goal.
-
-        Credits to Vinny Ruia for the idea and initial implementation.
     """
-    
-    COLLISION_REWARD = -5
+    A continuous control environment.
+
+    It implements a reach-type task, where the agent observes their position and speed and must
+    control their acceleration and steering so as to reach a given goal.
+
+    Credits to Vinny Ruia for the idea and initial implementation.
+    """
 
     @classmethod
-    def default_config(cls):
+    def default_config(cls) -> dict:
         config = super().default_config()
         config.update({
             "vehicles_count": 10,
@@ -29,9 +29,11 @@ class SummonEnv(ParkingEnv):
         })
         return config
 
-    def _create_road(self, spots=15):
+    def _create_road(self, spots: int = 15) -> None:
         """
-            Create a road composed of straight adjacent lanes.
+        Create a road composed of straight adjacent lanes.
+
+        :param spots: number of parking spots
         """
         net = RoadNetwork()
 
@@ -65,18 +67,21 @@ class SummonEnv(ParkingEnv):
                          np_random=self.np_random,
                          record_history=self.config["show_trajectories"])
 
-    def _create_vehicles(self, parked_probability=0.75):
+    def _create_vehicles(self, parked_probability: float = 0.75) -> None:
         """
-            Create some new random vehicles of a given type, and add them on the road.
+        Create some new random vehicles of a given type, and add them on the road.
+
+        :param parked_probability: probability that a spot is occupied
         """
 
-        self.vehicle = Vehicle(self.road, self.vehicle_starting, 2 * np.pi * self.np_random.rand(), 0)
+        self.vehicle = self.action_type.vehicle_class(self.road,
+                                                      self.vehicle_starting,
+                                                      2 * np.pi * self.np_random.rand(), 0)
         self.road.vehicles.append(self.vehicle)
 
         goal_position = [self.np_random.choice([-2 * self.spots - 10, 2 * self.spots + 10]), 0]
-        self.goal = Obstacle(self.road, goal_position, heading=0)
-        self.goal.COLLISIONS_ENABLED = False
-        self.road.obstacles.append(self.goal)
+        self.goal = Landmark(self.road, goal_position, heading=0)
+        self.road.objects.append(self.goal)
 
         vehicles_type = utils.class_from_path(self.config["other_vehicles_type"])
         for i in range(self.config["vehicles_count"]):
@@ -86,20 +91,20 @@ class SummonEnv(ParkingEnv):
                 idx = self.np_random.randint(0, self.num_middle_lanes)
                 longitudinal = (i * 5) - (self.x_range / 8) * self.np_random.randint(-1, 1)
                 self.road.vehicles.append(
-                    vehicles_type.make_on_lane(self.road, ("d", "e", idx), longitudinal, velocity=2))
+                    vehicles_type.make_on_lane(self.road, ("d", "e", idx), longitudinal, speed=2))
             else:
                 lane = ("a", "b", i) if self.np_random.rand() >= 0.5 else ("b", "c", i)
-                self.road.vehicles.append(Vehicle.make_on_lane(self.road, lane, 4, velocity=0))
+                self.road.vehicles.append(Vehicle.make_on_lane(self.road, lane, 4, speed=0))
 
         for v in self.road.vehicles:  # Prevent early collisions
             if v is not self.vehicle and np.linalg.norm(v.position - self.vehicle.position) < 20:
                 self.road.vehicles.remove(v)
 
-    def compute_reward(self, achieved_goal, desired_goal, info, p=0.5):
+    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict, p: float = 0.5) -> float:
         """
-            Proximity to the goal is rewarded
+        Proximity to the goal is rewarded
 
-            We use a weighted p-norm
+        We use a weighted p-norm
         :param achieved_goal: the goal that was achieved
         :param desired_goal: the goal that was desired
         :param info: any supplementary information
@@ -107,7 +112,7 @@ class SummonEnv(ParkingEnv):
         :return: the corresponding reward
         """
         return super().compute_reward(achieved_goal, desired_goal, info, p) + \
-            self.COLLISION_REWARD * self.vehicle.crashed
+            self.config["collision_reward"] * self.vehicle.crashed
 
 
 class SummonEnvActionRepeat(SummonEnv):

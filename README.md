@@ -23,7 +23,15 @@ By Junjie Wang, Qichao Zhang, and Dongbin Zhao.
 
 [highway-env](https://github.com/eleurent/highway-env)
 
+[里面有一些DQN，DQN-CNN，PPO，PPO-transformer的超参数设置](https://github.com/eleurent/highway-env/blob/master/scripts)
+
+[关于highway-v0的gamma为0.8的问题](https://github.com/eleurent/highway-env/issues/209)
+
 [ego-attention](https://eleurent.github.io/social-attention/)
 
+
+
 [non-local-block](https://github.com/AlexHex7/Non-local_pytorch)
+
+
 

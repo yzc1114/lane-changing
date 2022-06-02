@@ -27,12 +27,55 @@ kinematics_env_config = {
     "screen_height": 150,  # [px]
 }
 
+GrayscaleObservation_env_config = {
+    "id": "highway-v0",
+    "import_module": "highway_env",
+    "lanes_count": 3,
+    "vehicles_count": 50,  # 环境车数量
+    "duration": 50,  # 每个episode的step数
+    "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "observation": {
+        "type": "GrayscaleObservation",
+        "vehicles_count": 15,
+        "weights": [0.2989, 0.5870, 0.1140],  #weights for RGB conversion,
+        "stack_size": 4,
+        "observation_shape": (128, 64),
+        "order": "shuffled"
+    },
+    "screen_width": 600,  # [px]
+    "screen_height": 150,  # [px]
+}
+GrayscaleKinematicsObservation_env_config ={
+    "id": "highway-v0",
+    "import_module": "highway_env",
+    "lanes_count": 3,
+    "vehicles_count": 50,  # 环境车数量
+    "duration": 50,  # 每个episode的step数
+    "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "observation": {
+        "type": "GrayscaleKinematicsObservation",
+        "vehicles_count": 15,
+        "features": ["presence", "x", "y", "vx", "vy"],
+        "weights": [0.2989, 0.5870, 0.1140],  #weights for RGB conversion,
+        "stack_size": 4,
+        "observation_shape": (128, 64),
+        "order": "shuffled"
+    },
+    "screen_width": 600,  # [px]
+    "screen_height": 150,  # [px]
+}
+
 
 class ObsType:
+    GrayscaleObservation = 0
     Kinematics = 1
+    GrayscaleKinematicsObservation = 2
+
 
     obs_type_2_config = {
-        Kinematics: kinematics_env_config
+        Kinematics: kinematics_env_config,
+        GrayscaleObservation:GrayscaleObservation_env_config,
+        GrayscaleKinematicsObservation:GrayscaleKinematicsObservation_env_config
     }
 
 def make_env(num=1, obs_type=ObsType.Kinematics, seed=None):

@@ -1,59 +1,46 @@
 import copy
+import os
+from typing import List, Tuple, Optional, Callable
 import gym
-from gym import spaces
+from gym import Wrapper
+from gym.wrappers import RecordVideo
 from gym.utils import seeding
 import numpy as np
 
 from highway_env import utils
-from highway_env.envs.common.observation import observation_factory
+from highway_env.envs.common.action import action_factory, Action, DiscreteMetaAction, ActionType
+from highway_env.envs.common.observation import observation_factory, ObservationType
 from highway_env.envs.common.finite_mdp import finite_mdp
 from highway_env.envs.common.graphics import EnvViewer
-from highway_env.vehicle.behavior import IDMVehicle
-from highway_env.vehicle.control import MDPVehicle
-from highway_env.vehicle.kinematics import Obstacle
+from highway_env.vehicle.behavior import IDMVehicle, LinearVehicle
+from highway_env.vehicle.controller import MDPVehicle
+from highway_env.vehicle.kinematics import Vehicle
 
+Observation = np.ndarray
 
 class AbstractEnv(gym.Env):
-    """
-        A generic environment for various tasks involving a vehicle driving on a road.
 
-        The environment contains a road populated with vehicles, and a controlled ego-vehicle that can change lane and
-        velocity. The action space is fixed, but the observation space and reward function must be defined in the
-        environment implementations.
     """
-    metadata = {'render.modes': ['human', 'rgb_array']}
+    A generic environment for various tasks involving a vehicle driving on a road.
 
-    ACTIONS = {0: 'LANE_LEFT',
-               1: 'IDLE',
-               2: 'LANE_RIGHT',
-               3: 'FASTER',
-               4: 'SLOWER'}
+    The environment contains a road populated with vehicles, and a controlled ego-vehicle that can change lane and
+    speed. The action space is fixed, but the observation space and reward function must be defined in the
+    environment implementations.
     """
-        A mapping of action indexes to action labels
-    """
-    ACTIONS_INDEXES = {v: k for k, v in ACTIONS.items()}
-    """
-        A mapping of action labels to action indexes
-    """
+    observation_type: ObservationType
+    action_type: ActionType
+    _record_video_wrapper: Optional[RecordVideo]
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+    }
 
-    SIMULATION_FREQUENCY = 15
-    """
-        The frequency at which the system dynamics are simulated [Hz]
-    """
+    PERCEPTION_DISTANCE = 5.0 * Vehicle.MAX_SPEED
+    """The maximum distance of any vehicle present in the observation [m]"""
 
-    PERCEPTION_DISTANCE = 6.0 * MDPVehicle.SPEED_MAX
-    """
-        The maximum distance of any vehicle present in the observation [m]
-    """
-
-    STEERING_RANGE = np.pi / 4
-    ACCELERATION_RANGE = 5.0
-
-    def __init__(self, config=None):
+    def __init__(self, config: dict = None) -> None:
         # Configuration
         self.config = self.default_config()
-        if config:
-            self.config.update(config)
+        self.configure(config)
 
         # Seeding
         self.np_random = None
@@ -61,11 +48,12 @@ class AbstractEnv(gym.Env):
 
         # Scene
         self.road = None
-        self.vehicle = None
+        self.controlled_vehicles = []
 
         # Spaces
-        self.observation = None
+        self.action_type = None
         self.action_space = None
+        self.observation_type = None
         self.observation_space = None
         self.define_spaces()
 
@@ -76,111 +64,100 @@ class AbstractEnv(gym.Env):
 
         # Rendering
         self.viewer = None
-        self.automatic_rendering_callback = None
-        self.should_update_rendering = True
+        self._record_video_wrapper = None
         self.rendering_mode = 'human'
-        self.offscreen = self.config.get("offscreen_rendering", False)
         self.enable_auto_render = False
 
         self.reset()
 
-    @classmethod
-    def default_config(cls):
-        """
-            Default environment configuration.
+    @property
+    def vehicle(self) -> Vehicle:
+        """First (default) controlled vehicle."""
+        return self.controlled_vehicles[0] if self.controlled_vehicles else None
 
-            Can be overloaded in environment implementations, or by calling configure().
+    @vehicle.setter
+    def vehicle(self, vehicle: Vehicle) -> None:
+        """Set a unique controlled vehicle."""
+        self.controlled_vehicles = [vehicle]
+
+    @classmethod
+    def default_config(cls) -> dict:
+        """
+        Default environment configuration.
+
+        Can be overloaded in environment implementations, or by calling configure().
         :return: a configuration dict
         """
         return {
             "observation": {
-                "type": "TimeToCollision"
+                "type": "Kinematics"
             },
             "action": {
-                "type": "Discrete"
+                "type": "DiscreteMetaAction"
             },
+            "simulation_frequency": 15,  # [Hz]
             "policy_frequency": 1,  # [Hz]
             "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
             "screen_width": 600,  # [px]
             "screen_height": 150,  # [px]
             "centering_position": [0.3, 0.5],
-            "show_trajectories": False
+            "scaling": 5.5,
+            "show_trajectories": False,
+            "render_agent": True,
+            "offscreen_rendering": os.environ.get("OFFSCREEN_RENDERING", "0") == "1",
+            "manual_control": False,
+            "real_time_rendering": False
         }
 
-    def seed(self, seed=None):
+    def seed(self, seed: int = None) -> List[int]:
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def configure(self, config):
+    def configure(self, config: dict) -> None:
         if config:
             self.config.update(config)
 
-    def define_spaces(self):
-        self.observation = observation_factory(self, self.config["observation"])
-        self.observation_space = self.observation.space()
+    def update_metadata(self, video_real_time_ratio=2):
+        frames_freq = self.config["simulation_frequency"] \
+            if self._record_video_wrapper else self.config["policy_frequency"]
+        self.metadata['video.frames_per_second'] = video_real_time_ratio * frames_freq
 
-        if self.config["action"]["type"] == "Discrete":
-            self.action_space = spaces.Discrete(len(self.ACTIONS))
-        elif self.config["action"]["type"] == "Continuous":
-            self.action_space = spaces.Box(-1., 1., shape=(2,), dtype=np.float32)
-
-    def _reward(self, action):
+    def define_spaces(self) -> None:
         """
-            Return the reward associated with performing a given action and ending up in the current state.
+        Set the types and spaces of observation and action from config.
+        """
+        self.observation_type = observation_factory(self, self.config["observation"])
+        self.action_type = action_factory(self, self.config["action"])
+        self.observation_space = self.observation_type.space()
+        self.action_space = self.action_type.space()
+
+    def _reward(self, action: Action) -> float:
+        """
+        Return the reward associated with performing a given action and ending up in the current state.
 
         :param action: the last action performed
         :return: the reward
         """
         raise NotImplementedError
 
-    def _is_terminal(self):
+    def _is_terminal(self) -> bool:
         """
-            Check whether the current state is a terminal state
+        Check whether the current state is a terminal state
+
         :return:is the state terminal
         """
         raise NotImplementedError
 
-    def _cost(self, action):
+    def _info(self, obs: Observation, action: Action) -> dict:
         """
-            A constraint metric, for budgeted MDP.
+        Return a dictionary of additional information
 
-            If a constraint is defined, it must be used with an alternate reward that doesn't contain it
-            as a penalty.
-        :param action: the last action performed
-        :return: the constraint signal, the alternate (constraint-free) reward
+        :param obs: current observation
+        :param action: current action
+        :return: info dict
         """
-        raise NotImplementedError
-
-    def reset(self):
-        """
-            Reset the environment to it's initial configuration
-        :return: the observation of the reset state
-        """
-        self.time = 0
-        self.done = False
-        self.define_spaces()
-        return self.observation.observe()
-
-    def step(self, action):
-        """
-            Perform an action and step the environment dynamics.
-
-            The action is executed by the ego-vehicle, and all other vehicles on the road performs their default
-            behaviour for several simulation timesteps until the next decision making step.
-        :param int action: the action performed by the ego-vehicle
-        :return: a tuple (observation, reward, terminal, info)
-        """
-        if self.road is None or self.vehicle is None:
-            raise NotImplementedError("The road and vehicle must be initialized in the environment implementation")
-
-        self._simulate(action)
-
-        obs = self.observation.observe()
-        reward = self._reward(action)
-        terminal = self._is_terminal()
-
         info = {
-            "velocity": self.vehicle.velocity,
+            "speed": self.vehicle.speed,
             "crashed": self.vehicle.crashed,
             "action": action,
         }
@@ -188,122 +165,143 @@ class AbstractEnv(gym.Env):
             info["cost"] = self._cost(action)
         except NotImplementedError:
             pass
+        return info
+
+    def _cost(self, action: Action) -> float:
+        """
+        A constraint metric, for budgeted MDP.
+
+        If a constraint is defined, it must be used with an alternate reward that doesn't contain it as a penalty.
+        :param action: the last action performed
+        :return: the constraint signal, the alternate (constraint-free) reward
+        """
+        raise NotImplementedError
+
+    def reset(self) -> Observation:
+        """
+        Reset the environment to it's initial configuration
+
+        :return: the observation of the reset state
+        """
+        self.update_metadata()
+        self.define_spaces()  # First, to set the controlled vehicle class depending on action space
+        self.time = self.steps = 0
+        self.done = False
+        self._reset()
+        self.define_spaces()  # Second, to link the obs and actions to the vehicles once the scene is created
+        return self.observation_type.observe()
+
+    def _reset(self) -> None:
+        """
+        Reset the scene: roads and vehicles.
+
+        This method must be overloaded by the environments.
+        """
+        raise NotImplementedError()
+
+    def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
+        """
+        Perform an action and step the environment dynamics.
+
+        The action is executed by the ego-vehicle, and all other vehicles on the road performs their default behaviour
+        for several simulation timesteps until the next decision making step.
+
+        :param action: the action performed by the ego-vehicle
+        :return: a tuple (observation, reward, terminal, info)
+        """
+        if self.road is None or self.vehicle is None:
+            raise NotImplementedError("The road and vehicle must be initialized in the environment implementation")
+
+        self.steps += 1
+        self._simulate(action)
+
+        obs = self.observation_type.observe()
+        reward = self._reward(action)
+        terminal = self._is_terminal()
+        info = self._info(obs, action)
 
         return obs, reward, terminal, info
 
-    def _simulate(self, action=None):
-        """
-            Perform several steps of simulation with constant action
-        """
-        for k in range(int(self.SIMULATION_FREQUENCY // self.config["policy_frequency"])):
-            if action is not None and \
-                    self.time % int(self.SIMULATION_FREQUENCY // self.config["policy_frequency"]) == 0:
-                # Forward action to the vehicle
-                if self.config["action"]["type"] == "Discrete":
-                    self.vehicle.act(self.ACTIONS[action])
-                elif self.config["action"]["type"] == "Continuous":
-                    self.vehicle.act({
-                        "acceleration": action[0] * self.ACCELERATION_RANGE,
-                        "steering": action[1] * self.STEERING_RANGE
-                    })
+    def _simulate(self, action: Optional[Action] = None) -> None:
+        """Perform several steps of simulation with constant action."""
+        frames = int(self.config["simulation_frequency"] // self.config["policy_frequency"])
+        for frame in range(frames):
+            # Forward action to the vehicle
+            if action is not None \
+                    and not self.config["manual_control"] \
+                    and self.time % int(self.config["simulation_frequency"] // self.config["policy_frequency"]) == 0:
+                self.action_type.act(action)
 
             self.road.act()
-            self.road.step(1 / self.SIMULATION_FREQUENCY)
+            self.road.step(1 / self.config["simulation_frequency"])
             self.time += 1
 
             # Automatically render intermediate simulation steps if a viewer has been launched
             # Ignored if the rendering is done offscreen
-            self._automatic_rendering()
+            if frame < frames - 1:  # Last frame will be rendered through env.render() as usual
+                self._automatic_rendering()
 
-            # Stop at terminal states
-            if self.done or self._is_terminal():
-                break
         self.enable_auto_render = False
 
-    def render(self, mode='human'):
+    def render(self, mode: str = 'human') -> Optional[np.ndarray]:
         """
-            Render the environment.
+        Render the environment.
 
-            Create a viewer if none exists, and use it to render an image.
+        Create a viewer if none exists, and use it to render an image.
         :param mode: the rendering mode
         """
         self.rendering_mode = mode
 
         if self.viewer is None:
-            self.viewer = EnvViewer(self, offscreen=self.offscreen)
+            self.viewer = EnvViewer(self)
 
-        self.enable_auto_render = not self.offscreen
+        self.enable_auto_render = True
 
-        # If the frame has already been rendered, do nothing
-        if self.should_update_rendering:
-            self.viewer.display()
+        self.viewer.display()
 
+        if not self.viewer.offscreen:
+            self.viewer.handle_events()
         if mode == 'rgb_array':
             image = self.viewer.get_image()
-            if not self.viewer.offscreen:
-                self.viewer.handle_events()
-            self.viewer.handle_events()
             return image
-        elif mode == 'human':
-            if not self.viewer.offscreen:
-                self.viewer.handle_events()
-        self.should_update_rendering = False
 
-    def close(self):
+    def close(self) -> None:
         """
-            Close the environment.
+        Close the environment.
 
-            Will close the environment viewer if it exists.
+        Will close the environment viewer if it exists.
         """
         self.done = True
         if self.viewer is not None:
             self.viewer.close()
         self.viewer = None
 
-    def get_available_actions(self):
+    def get_available_actions(self) -> List[int]:
+        return self.action_type.get_available_actions()
+
+    def set_record_video_wrapper(self, wrapper: RecordVideo):
+        self._record_video_wrapper = wrapper
+        self.update_metadata()
+
+    def _automatic_rendering(self) -> None:
         """
-            Get the list of currently available actions.
+        Automatically render the intermediate frames while an action is still ongoing.
 
-            Lane changes are not available on the boundary of the road, and velocity changes are not available at
-            maximal or minimal velocity.
-
-        :return: the list of available actions
-        """
-        actions = [self.ACTIONS_INDEXES['IDLE']]
-        for l_index in self.road.network.side_lanes(self.vehicle.lane_index):
-            if l_index[2] < self.vehicle.lane_index[2] \
-                    and self.road.network.get_lane(l_index).is_reachable_from(self.vehicle.position):
-                actions.append(self.ACTIONS_INDEXES['LANE_LEFT'])
-            if l_index[2] > self.vehicle.lane_index[2] \
-                    and self.road.network.get_lane(l_index).is_reachable_from(self.vehicle.position):
-                actions.append(self.ACTIONS_INDEXES['LANE_RIGHT'])
-        if self.vehicle.velocity_index < self.vehicle.SPEED_COUNT - 1:
-            actions.append(self.ACTIONS_INDEXES['FASTER'])
-        if self.vehicle.velocity_index > 0:
-            actions.append(self.ACTIONS_INDEXES['SLOWER'])
-        return actions
-
-    def _automatic_rendering(self):
-        """
-            Automatically render the intermediate frames while an action is still ongoing.
-            This allows to render the whole video and not only single steps corresponding to agent decision-making.
-
-            If a callback has been set, use it to perform the rendering. This is useful for the environment wrappers
-            such as video-recording monitor that need to access these intermediate renderings.
+        This allows to render the whole video and not only single steps corresponding to agent decision-making.
+        If a RecordVideo wrapper has been set, use it to capture intermediate frames.
         """
         if self.viewer is not None and self.enable_auto_render:
-            self.should_update_rendering = True
 
-            if self.automatic_rendering_callback:
-                self.automatic_rendering_callback()
+            if self._record_video_wrapper and self._record_video_wrapper.video_recorder:
+                self._record_video_wrapper.video_recorder.capture_frame()
             else:
                 self.render(self.rendering_mode)
 
-    def simplify(self):
+    def simplify(self) -> 'AbstractEnv':
         """
-            Return a simplified copy of the environment where distant vehicles have been removed from the road.
+        Return a simplified copy of the environment where distant vehicles have been removed from the road.
 
-            This is meant to lower the policy computational load while preserving the optimal actions set.
+        This is meant to lower the policy computational load while preserving the optimal actions set.
 
         :return: a simplified environment state
         """
@@ -313,9 +311,10 @@ class AbstractEnv(gym.Env):
 
         return state_copy
 
-    def change_vehicles(self, vehicle_class_path):
+    def change_vehicles(self, vehicle_class_path: str) -> 'AbstractEnv':
         """
-            Change the type of all vehicles on the road
+        Change the type of all vehicles on the road
+
         :param vehicle_class_path: The path of the class of behavior for other vehicles
                              Example: "highway_env.vehicle.behavior.IDMVehicle"
         :return: a new environment with modified behavior model for other vehicles
@@ -325,11 +324,11 @@ class AbstractEnv(gym.Env):
         env_copy = copy.deepcopy(self)
         vehicles = env_copy.road.vehicles
         for i, v in enumerate(vehicles):
-            if v is not env_copy.vehicle and not isinstance(v, Obstacle):
+            if v is not env_copy.vehicle:
                 vehicles[i] = vehicle_class.create_from(v)
         return env_copy
 
-    def set_preferred_lane(self, preferred_lane=None):
+    def set_preferred_lane(self, preferred_lane: int = None) -> 'AbstractEnv':
         env_copy = copy.deepcopy(self)
         if preferred_lane:
             for v in env_copy.road.vehicles:
@@ -339,14 +338,30 @@ class AbstractEnv(gym.Env):
                     v.LANE_CHANGE_MAX_BRAKING_IMPOSED = 1000
         return env_copy
 
-    def set_route_at_intersection(self, _to):
+    def set_route_at_intersection(self, _to: str) -> 'AbstractEnv':
         env_copy = copy.deepcopy(self)
         for v in env_copy.road.vehicles:
             if isinstance(v, IDMVehicle):
                 v.set_route_at_intersection(_to)
         return env_copy
 
-    def randomize_behaviour(self):
+    def set_vehicle_field(self, args: Tuple[str, object]) -> 'AbstractEnv':
+        field, value = args
+        env_copy = copy.deepcopy(self)
+        for v in env_copy.road.vehicles:
+            if v is not self.vehicle:
+                setattr(v, field, value)
+        return env_copy
+
+    def call_vehicle_method(self, args: Tuple[str, Tuple[object]]) -> 'AbstractEnv':
+        method, method_args = args
+        env_copy = copy.deepcopy(self)
+        for i, v in enumerate(env_copy.road.vehicles):
+            if hasattr(v, method):
+                env_copy.road.vehicles[i] = getattr(v, method)(*method_args)
+        return env_copy
+
+    def randomize_behavior(self) -> 'AbstractEnv':
         env_copy = copy.deepcopy(self)
         for v in env_copy.road.vehicles:
             if isinstance(v, IDMVehicle):
@@ -357,15 +372,21 @@ class AbstractEnv(gym.Env):
         return finite_mdp(self, time_quantization=1/self.config["policy_frequency"])
 
     def __deepcopy__(self, memo):
-        """
-            Perform a deep copy but without copying the environment viewer.
-        """
+        """Perform a deep copy but without copying the environment viewer."""
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k not in ['viewer', 'automatic_rendering_callback']:
+            if k not in ['viewer', '_record_video_wrapper']:
                 setattr(result, k, copy.deepcopy(v, memo))
             else:
                 setattr(result, k, None)
         return result
+
+
+class MultiAgentWrapper(Wrapper):
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        reward = info["agents_rewards"]
+        done = info["agents_dones"]
+        return obs, reward, done, info

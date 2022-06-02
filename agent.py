@@ -12,8 +12,11 @@ from env import make_env
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 from stable_baselines3.common.evaluation import evaluate_policy
 from learners import make_learner_fn
-from tqdm.notebook import tqdm
+# from tqdm.notebook import tqdm
 from stable_baselines3.common.callbacks import BaseCallback
+
+ 
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 class TqdmCallback(BaseCallback):
@@ -39,11 +42,11 @@ class Agent(object):
         """
         parser = argparse.ArgumentParser(description='Training parameters')
         parser.add_argument('--mode', default='train', type=str, choices=['train', 'test'])  # mode = 'train' or 'test'
-        parser.add_argument('--obs_type', type=int, default=1, choices=[1], help="observation type, 1: kinematics")
-        parser.add_argument('--learner_type', type=str, default='DDPG',
-                            help="Algorithm to train from {PPO, A2C, DQN, DDPG, TD3}")
+        parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1], help="observation type, 0:GrayscaleObservation,1: kinematics")
+        parser.add_argument('--learner_type', type=str, default='PPO',
+                            help="Algorithm to train from {PPO, A2C, DQN, DQN_CNN, DDPG, TD3}")
         parser.add_argument('--parallels', type=int, default=1)
-        parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
+        parser.add_argument('--nb_steps', type=int, default=int(2000*5), help="Number of training steps")
         parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
         parser.add_argument('--init_weight_path', type=str, default=None, help="initial weight path.")
         parser.add_argument('--render', dest='render', action='store_true', help="Render environment while training")
@@ -81,8 +84,8 @@ class Agent(object):
                                      log_path='./log/', eval_freq=args.eval_interval_steps,
                                      deterministic=True, render=True)
 
-        tqdm_callback = TqdmCallback()
-        callback = CallbackList([checkpoint_callback, eval_callback, tqdm_callback])
+        # tqdm_callback = TqdmCallback()
+        callback = CallbackList([checkpoint_callback, eval_callback]) #, tqdm_callback
         print(f"start train, init weight: {args.init_weight_path}")
         print(f"nb_steps: {nb_steps}, learner name: {prefix}, obs_type: {obs_type}")
 
