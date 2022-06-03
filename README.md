@@ -23,11 +23,18 @@ By Junjie Wang, Qichao Zhang, and Dongbin Zhao.
 
 [highway-env](https://github.com/eleurent/highway-env)
 
-[里面有一些DQN，DQN-CNN，PPO，PPO-transformer的超参数设置](https://github.com/eleurent/highway-env/blob/master/scripts)
+1. [里面有一些DQN，DQN-CNN，PPO，PPO-transformer的超参数设置](https://github.com/eleurent/highway-env/blob/master/scripts)
+2. [关于highway-v0的gamma为0.8的问题](https://github.com/eleurent/highway-env/issues/209)
+3. 调研rl-zoo自动调参 https://github.com/DLR-RM/rl-baselines3-zoo
+4. 调研另一个适配器 rl-agent https://github.com/eleurent/rl-agents
 
-[关于highway-v0的gamma为0.8的问题](https://github.com/eleurent/highway-env/issues/209)
+
 
 [ego-attention](https://eleurent.github.io/social-attention/)
+
+base on DDQN, config is https://github.com/eleurent/rl-agents/blob/master/scripts/configs/HighwayEnv/agents/DQNAgent/ego_attention.json
+
+
 
 
 
