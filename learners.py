@@ -7,11 +7,13 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import SubprocVecEnv,DummyVecEnv
 from typing import Tuple
 from env import ObsType
+from models import *
 
 
 class LearnerType:
     PPO = "PPO"
     A2C = "A2C"
+    EGO = "EGO"
     DQN = "DQN"
     DQN_CNN = "DQN_CNN"
 
@@ -20,7 +22,8 @@ def make_learner_fn(learner_type: LearnerType, obs_type):
         ObsType.Kinematics: {
             LearnerType.DQN: LearnerFactory.DQN_Kinematics,
             LearnerType.PPO: LearnerFactory.PPO_Kinematics,
-            LearnerType.A2C: LearnerFactory.A2C_Kinematics
+            LearnerType.A2C: LearnerFactory.A2C_Kinematics,
+            LearnerType.EGO: LearnerFactory.EGO_Kinematics
             
         },
         ObsType.GrayscaleObservation:{
@@ -59,7 +62,6 @@ class LearnerFactory(object):
                 train_freq=1,
                 gradient_steps=1,
                 target_update_interval=50,
-                exploration_fraction=0.7,
                 verbose=1,
                 tensorboard_log="./log/")
         return learner_name, model
@@ -93,6 +95,24 @@ class LearnerFactory(object):
                     gamma=0.8,
                     n_steps=6,
                     verbose=2,
+                    tensorboard_log="./log/")
+        return learner_name, model
+    
+    @classmethod
+    def EGO_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
+        learner_name = "EGO_Kinematics"
+        model = DQN('MlpPolicy', env,
+                    policy_kwargs=dict(features_extractor_class=EgoAttentionNetwork_feature_extractor,
+                    net_arch = [32]),
+                    learning_rate=5e-4,
+                    buffer_size=15000,
+                    learning_starts=200,
+                    batch_size=32,
+                    gamma=0.8,
+                    train_freq=1,
+                    gradient_steps=1,
+                    target_update_interval=50,
+                    verbose=1,
                     tensorboard_log="./log/")
         return learner_name, model
 

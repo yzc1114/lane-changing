@@ -36,7 +36,7 @@ GrayscaleObservation_env_config = {
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
         "type": "GrayscaleObservation",
-        "vehicles_count": 15,
+        "vehicles_count": 5,
         "weights": [0.2989, 0.5870, 0.1140],  #weights for RGB conversion,
         "stack_size": 4,
         "observation_shape": (128, 64),
@@ -54,7 +54,7 @@ GrayscaleKinematicsObservation_env_config ={
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
         "type": "GrayscaleKinematicsObservation",
-        "vehicles_count": 15,
+        "vehicles_count": 5,
         "features": ["presence", "x", "y", "vx", "vy"],
         "weights": [0.2989, 0.5870, 0.1140],  #weights for RGB conversion,
         "stack_size": 4,
