@@ -11,7 +11,7 @@ from copy import deepcopy
 
 
 kinematics_env_config = {
-    "id": "highway-v0",
+    "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
     "vehicles_count": 50,  # 环境车数量
@@ -19,16 +19,16 @@ kinematics_env_config = {
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
         "type": "Kinematics",
-        "vehicles_count": 15,
+        "vehicles_count": 5,
         "features": ["presence", "x", "y", "vx", "vy"],
-        "order": "shuffled"
+        # "order": "shuffled"
     },
     "screen_width": 600,  # [px]
     "screen_height": 150,  # [px]
 }
 
 GrayscaleObservation_env_config = {
-    "id": "highway-v0",
+    "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
     "vehicles_count": 50,  # 环境车数量
@@ -46,7 +46,7 @@ GrayscaleObservation_env_config = {
     "screen_height": 150,  # [px]
 }
 GrayscaleKinematicsObservation_env_config ={
-    "id": "highway-v0",
+    "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
     "vehicles_count": 50,  # 环境车数量
@@ -85,7 +85,7 @@ def make_env(num=1, obs_type=ObsType.Kinematics, seed=None):
     # Create the vectorized environment
     def make_env_fn(rank: int, seed: int = 0) -> Callable:
         def _init() -> gym.Env:
-            _env = gym.make("highway-v0")
+            _env = gym.make("highway-fast-v0")
             config = deepcopy(ObsType.obs_type_2_config[obs_type])
             _env.unwrapped.configure(config)
             _env.reset()

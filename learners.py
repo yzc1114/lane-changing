@@ -34,7 +34,7 @@ class LearnerFactory(object):
     def DQN_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
         learner_name = "DQN_Kinematics"
         model = DQN('MlpPolicy', env,
-                    policy_kwargs=dict(net_arch=[256, 256]),
+                    policy_kwargs=dict(net_arch=[512, 256, 256]),
                     learning_rate=5e-4,
                     buffer_size=15000,
                     learning_starts=200,
@@ -64,7 +64,7 @@ class LearnerFactory(object):
                 tensorboard_log="./log/")
         return learner_name, model
     
-    
+
 
     @classmethod
     def PPO_Kinematics(cls, env) -> Tuple[str, BaseAlgorithm]:
@@ -75,7 +75,7 @@ class LearnerFactory(object):
         batch_size = 64
         model = PPO('MlpPolicy', env,
                     learning_rate=5e-4,
-                    policy_kwargs=dict(net_arch=[dict(pi=[256, 256], vf=[256, 256])]),
+                    policy_kwargs=dict(net_arch=[512, 256, dict(pi=[256, 64], vf=[256, 256])]),
                     n_steps=batch_size * 12 // n_envs,
                     batch_size=batch_size,
                     n_epochs=10,

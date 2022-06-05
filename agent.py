@@ -14,26 +14,28 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from learners import make_learner_fn
 # from tqdm.notebook import tqdm
 from stable_baselines3.common.callbacks import BaseCallback
+import warnings
 
+warnings.filterwarnings("ignore")
  
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
-class TqdmCallback(BaseCallback):
-    def __init__(self):
-        super().__init__()
-        self.progress_bar = None
-
-    def _on_training_start(self):
-        self.progress_bar = tqdm(total=self.locals['total_timesteps'])
-
-    def _on_step(self):
-        self.progress_bar.update(1)
-        return True
-
-    def _on_training_end(self):
-        self.progress_bar.close()
-        self.progress_bar = None
+# class TqdmCallback(BaseCallback):
+#     def __init__(self):
+#         super().__init__()
+#         self.progress_bar = None
+#
+#     def _on_training_start(self):
+#         self.progress_bar = tqdm(total=self.locals['total_timesteps'])
+#
+#     def _on_step(self):
+#         self.progress_bar.update(1)
+#         return True
+#
+#     def _on_training_end(self):
+#         self.progress_bar.close()
+#         self.progress_bar = None
 
 class Agent(object):
     @staticmethod
@@ -54,18 +56,21 @@ class Agent(object):
         return parser.parse_args()
 
     @staticmethod
-    def init_learner(args, env):
+    def init_learner(args, env, model_path=None):
         learner_type = args.learner_type
         obs_type = args.obs_type
         learner_name, learner = make_learner_fn(learner_type, obs_type)(env)
-        if args.init_weight_path is not None:
-            learner.load(args.init_weight_path)
+        if model_path is not None:
+            learner = learner.load(model_path)
+        elif args.init_weight_path is not None:
+            learner = learner.load(args.init_weight_path)
         return learner_name, learner
 
     def train(self):
         args = self.parse_args()
         obs_type = args.obs_type
 
+        print(f"make parallel envs, parallels = {args.parallels}.")
         train_env = make_env(args.parallels, obs_type)
         learner_name, learner = self.init_learner(args, train_env)
         now = int(time.time())
@@ -91,15 +96,17 @@ class Agent(object):
 
         learner.learn(nb_steps, callback=callback, log_interval=100)
 
-    def test(self):
+    def test(self, model_path=None):
         args = self.parse_args()
         obs_type = args.obs_type
         eval_env = make_env(1, obs_type)
-        learner_name, learner = self.init_learner(args, eval_env)
+        learner_name, learner = self.init_learner(args, eval_env, model_path=model_path)
         # 测试10个episode的结果
         steps = []
         total_rewards = []
         no_collisions = []
+        mean_reward, _ = evaluate_policy(learner, eval_env, n_eval_episodes=10, deterministic=True, render=True)
+        print(f"evaluate_policy mean_reward {mean_reward}")
         for i in range(10):
             obs = eval_env.reset()
             done = False
@@ -123,6 +130,10 @@ class Agent(object):
         no_collisions_count = np.count_nonzero(no_collisions)
         print(f"mean_steps: {mean_steps}, mean_total_rewards: {mean_total_rewards}, no_collisions_count: {no_collisions_count}")
 
+def evaluate():
+    agent = Agent()
+    agent.test(model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip")
+
 def main():
     agent = Agent()
     args = agent.parse_args()
@@ -133,3 +144,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # evaluate()
