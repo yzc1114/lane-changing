@@ -465,7 +465,7 @@ EgoAttentionNetwork_config = {
             "output_layer": {
                 "in": None,
                 "type": "MultiLayerPerceptron",
-                "layers": [128],
+                "layers": [128,128],
                 "out": None,
                 "reshape": False
             },
@@ -476,12 +476,13 @@ import gym
 class EgoAttentionNetwork_feature_extractor(
                             # EgoAttentionNetwork,
                             BaseFeaturesExtractor):
-    def __init__(self,observation_space: gym.spaces.Box, config = EgoAttentionNetwork_config,features_dim = 32):
+    def __init__(self,observation_space: gym.spaces.Box, config = EgoAttentionNetwork_config,features_dim = 128):
         # super(EgoAttentionNetwork_feature_extractor,self).__init__(self,observation_space,features_dim = 32)
         # EgoAttentionNetwork.__init__(self,config=config)
         super(EgoAttentionNetwork_feature_extractor,self).__init__(observation_space,features_dim=features_dim)
         self.config = config
-        self.config["in"] = observation_space.shape[1] #spaces.Box(shape=(self.vehicles_count, len(self.features))    
+        self.config["in"] = observation_space.shape[1] #spaces.Box(shape=(self.vehicles_count, len(self.features))  
+        # self.config["in"] = int(np.prod(observation_space.shape))  
         self.config["out"] = features_dim
         self.egoAttentionNetwork = EgoAttentionNetwork(config=self.config)
 
