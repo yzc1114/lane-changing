@@ -44,12 +44,12 @@ class Agent(object):
         """
         parser = argparse.ArgumentParser(description='Training parameters')
         parser.add_argument('--mode', default='train', type=str, choices=['train', 'test'])  # mode = 'train' or 'test'
-        parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1], help="observation type, 0:GrayscaleObservation,1: kinematics")
+        parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1, 2, 3], help="observation type, 0:GrayscaleObservation,1: kinematics")
         parser.add_argument('--learner_type', type=str, default='PPO',
                             help="Algorithm to train from {PPO, A2C, DQN, DQN_CNN, DDPG, TD3}")
         parser.add_argument('--parallels', type=int, default=1)
         parser.add_argument('--nb_steps', type=int, default=int(2000*5), help="Number of training steps")
-        parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
+        parser.add_argument('--eval_interval_steps', type=int, default=50, help="Eval and checkpoint interval steps")
         parser.add_argument('--init_weight_path', type=str, default=None, help="initial weight path.")
         parser.add_argument('--render', dest='render', action='store_true', help="Render environment while training")
         parser.set_defaults(render=True)
@@ -61,16 +61,19 @@ class Agent(object):
         obs_type = args.obs_type
         learner_name, learner = make_learner_fn(learner_type, obs_type)(env)
         if model_path is not None:
+            print(f"use specified model_path {model_path}")
             learner = learner.load(model_path)
         elif args.init_weight_path is not None:
+            print(f"use args model_path {args.init_weight_path}")
             learner = learner.load(args.init_weight_path)
         return learner_name, learner
 
     def train(self):
         args = self.parse_args()
         obs_type = args.obs_type
-
-        print(f"make parallel envs, parallels = {args.parallels}.")
+        print("Mode is training.")
+        print(f"Use agent learner_type: {args.learner_type}, Use obs_type: {args.obs_type}")
+        print(f"Make parallel envs, parallels = {args.parallels}.")
         train_env = make_env(args.parallels, obs_type)
         learner_name, learner = self.init_learner(args, train_env)
         now = int(time.time())
@@ -79,15 +82,15 @@ class Agent(object):
         weights_directory = './weights/'
         nb_steps = args.nb_steps
 
-        checkpoint_callback = CheckpointCallback(save_freq=args.eval_interval_steps, save_path=weights_directory,
+        checkpoint_callback = CheckpointCallback(save_freq=500, save_path=weights_directory,
                                                  name_prefix=prefix)
         # Separate evaluation env
         eval_env = make_env(1, obs_type)
-        mean_reward, _ = evaluate_policy(learner, eval_env, n_eval_episodes=5, deterministic=True, render=True)
+        mean_reward, _ = evaluate_policy(learner, eval_env, n_eval_episodes=10, deterministic=True, render=False)
         print(f"initial 5 episodes mean_reward: {mean_reward}")
         eval_callback = EvalCallback(eval_env, best_model_save_path=os.path.join(weights_directory, prefix + '_best'),
-                                     log_path='./log/', eval_freq=args.eval_interval_steps,
-                                     deterministic=True, render=True)
+                                     n_eval_episodes=10, log_path='./log/', eval_freq=args.eval_interval_steps,
+                                     deterministic=True, render=False)
 
         # tqdm_callback = TqdmCallback()
         callback = CallbackList([checkpoint_callback, eval_callback]) #, tqdm_callback
@@ -99,14 +102,12 @@ class Agent(object):
     def test(self, model_path=None):
         args = self.parse_args()
         obs_type = args.obs_type
-        eval_env = make_env(1, obs_type)
+        eval_env = make_env(1, obs_type, seed=100)
         learner_name, learner = self.init_learner(args, eval_env, model_path=model_path)
         # 测试10个episode的结果
         steps = []
         total_rewards = []
         no_collisions = []
-        mean_reward, _ = evaluate_policy(learner, eval_env, n_eval_episodes=10, deterministic=True, render=True)
-        print(f"evaluate_policy mean_reward {mean_reward}")
         for i in range(10):
             obs = eval_env.reset()
             done = False

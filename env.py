@@ -45,7 +45,8 @@ GrayscaleObservation_env_config = {
     "screen_width": 600,  # [px]
     "screen_height": 150,  # [px]
 }
-GrayscaleKinematicsObservation_env_config ={
+
+TimeToCollision_env_config ={
     "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
@@ -53,30 +54,51 @@ GrayscaleKinematicsObservation_env_config ={
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
     "observation": {
-        "type": "GrayscaleKinematicsObservation",
-        "vehicles_count": 15,
+        "type": "TimeToCollision",
+        "vehicles_count": 5,
         "features": ["presence", "x", "y", "vx", "vy"],
-        "weights": [0.2989, 0.5870, 0.1140],  #weights for RGB conversion,
-        "stack_size": 4,
-        "observation_shape": (128, 64),
-        "order": "shuffled"
     },
     "screen_width": 600,  # [px]
     "screen_height": 150,  # [px]
 }
 
+OccupancyGrid_env_config ={
+    "id": "highway-fast-v0",
+    "import_module": "highway_env",
+    "lanes_count": 3,
+    "vehicles_count": 50,  # 环境车数量
+    "duration": 50,  # 每个episode的step数
+    "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "observation": {
+        "type": "OccupancyGrid",
+        "features": ["presence", "x", "y", "vx", "vy"],
+        "as_image": True,
+    },
+    "screen_width": 600,  # [px]
+    "screen_height": 150,  # [px]
+}
 
 class ObsType:
-    GrayscaleObservation = 0
+    Grayscale = 0
     Kinematics = 1
-    GrayscaleKinematicsObservation = 2
+    TimeToCollision = 2
+    OccupancyGrid = 3
 
 
     obs_type_2_config = {
         Kinematics: kinematics_env_config,
-        GrayscaleObservation:GrayscaleObservation_env_config,
-        GrayscaleKinematicsObservation:GrayscaleKinematicsObservation_env_config
+        Grayscale: GrayscaleObservation_env_config,
+        TimeToCollision: TimeToCollision_env_config,
+        OccupancyGrid: OccupancyGrid_env_config,
     }
+
+def obs_type_2_string(obs_type):
+    return {
+        ObsType.Grayscale: "grayscale",
+        ObsType.Kinematics: "kinematics",
+        ObsType.TimeToCollision: "TTC",
+        ObsType.OccupancyGrid: "gridoccupancy",
+    }[obs_type]
 
 def make_env(num=1, obs_type=ObsType.Kinematics, seed=None):
     if seed is None:
@@ -103,5 +125,5 @@ def make_env(num=1, obs_type=ObsType.Kinematics, seed=None):
 
 
 if __name__ == '__main__':
-    env = make_env(1)
+    env = make_env(1, obs_type=ObsType.OccupancyGrid)
     print(env.config)
