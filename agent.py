@@ -132,7 +132,7 @@ class Agent(object):
 
 def evaluate():
     agent = Agent()
-    agent.test(model_path='weights/DQN_GrayscaleObservation_1654415081_best/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
+    agent.test(model_path='weights/EGO_Kinematics_1654437443_best/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
 
 def main():
     agent = Agent()
@@ -143,5 +143,5 @@ def main():
         agent.train()
 
 if __name__ == "__main__":
-    main()
-    # evaluate()
+    # main()
+    evaluate()
