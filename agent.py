@@ -46,10 +46,10 @@ class Agent(object):
         parser.add_argument('--mode', default='train', type=str, choices=['train', 'test'])  # mode = 'train' or 'test'
         parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1, 2, 3], help="observation type, 0:GrayscaleObservation,1: kinematics")
         parser.add_argument('--learner_type', type=str, default='PPO',
-                            help="Algorithm to train from {PPO, A2C, DQN, DQN_CNN, DDPG, TD3}")
+                            help="Algorithm to train from {PPO, A2C, DQN, DQN_CNN, DDPG, TD3, EGO}")
         parser.add_argument('--parallels', type=int, default=1)
-        parser.add_argument('--nb_steps', type=int, default=int(2000*5), help="Number of training steps")
-        parser.add_argument('--eval_interval_steps', type=int, default=50, help="Eval and checkpoint interval steps")
+        parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
+        parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
         parser.add_argument('--init_weight_path', type=str, default=None, help="initial weight path.")
         parser.add_argument('--render', dest='render', action='store_true', help="Render environment while training")
         parser.set_defaults(render=True)
@@ -133,7 +133,7 @@ class Agent(object):
 
 def evaluate():
     agent = Agent()
-    agent.test(model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip")
+    agent.test(model_path='weights/EGO_Kinematics_1654437443_best/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
 
 def main():
     agent = Agent()
@@ -144,5 +144,5 @@ def main():
         agent.train()
 
 if __name__ == "__main__":
-    main()
-    # evaluate()
+    # main()
+    evaluate()

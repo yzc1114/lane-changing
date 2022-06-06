@@ -97,7 +97,7 @@ class DuelingNetwork(BaseModule, Configurable):
         return value + advantage - advantage.mean(1).unsqueeze(1).expand(-1,  self.config["out"])
 
 
-class ConvolutionalNetwork(nn.Module, Configurable):
+class ConvolutionalNetwork(nn.Module, Configurable): #3个卷积层+一个线性层
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
@@ -147,7 +147,9 @@ class ConvolutionalNetwork(nn.Module, Configurable):
         return self.head(x)
 
 
-class EgoAttention(BaseModule, Configurable):
+class EgoAttention(BaseModule, Configurable): 
+    #以ego作为主题，先将ego(1,fearures)和others(n-1,fearures)过一遍encoder(key_all,value_all,query_ego),再过注意力层(分成多个头，求qk^t内积 ->(1,entity)，乘value() (1,entity)*(entity*feature)->(1,fearures);),
+    #再过decoder(1,fearures) * (fearures,fearures)->(1,fearures),再加上原来的ego除以2做残差，得到结果
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
@@ -183,11 +185,12 @@ class EgoAttention(BaseModule, Configurable):
             mask = mask.view((batch_size, 1, 1, n_entities)).repeat((1, self.config["heads"], 1, 1))
         value, attention_matrix = attention(query_ego, key_all, value_all, mask,
                                             nn.Dropout(self.config["dropout_factor"]))
-        result = (self.attention_combine(value.reshape((batch_size, self.config["feature_size"]))) + ego.squeeze(1))/2
+        result = (self.attention_combine(value.reshape((batch_size, self.config["feature_size"]))) + ego.squeeze(1))/2 #残差
         return result, attention_matrix
 
 
 class SelfAttention(BaseModule, Configurable):
+    #与egoattention类似，只不过ego变成了all,最后得到(entity,fearures)
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
@@ -241,7 +244,7 @@ class EgoAttentionNetwork(BaseModule, Configurable):
 
         self.ego_embedding = model_factory(self.config["embedding_layer"])
         self.others_embedding = model_factory(self.config["others_embedding_layer"])
-        self.self_attention_layer = None
+        self.self_attention_layer = None #初始self_attention layer是none，如果不是none，embedding后的数据要先过一遍self_attention作为encoder(和ego里的encoder不一样)
         if self.config["self_attention_layer"]:
             self.self_attention_layer = SelfAttention(self.config["self_attention_layer"])
         self.attention_layer = EgoAttention(self.config["attention_layer"])
@@ -275,7 +278,7 @@ class EgoAttentionNetwork(BaseModule, Configurable):
             },
             "output_layer": {
                 "type": "MultiLayerPerceptron",
-                "layers": [128, 128, 128],
+                "layers": [128, 128, 32],
                 "reshape": False
             },
         }
@@ -303,7 +306,7 @@ class EgoAttentionNetwork(BaseModule, Configurable):
         return self.attention_layer(ego, others, mask)
 
     def get_attention_matrix(self, x):
-        _, attention_matrix = self.forward_attention(x)
+        _, attention_matrix = self.forward_attention(x) #得到注意力矩阵
         return attention_matrix
 
 
@@ -415,6 +418,9 @@ def size_model_config(env, model_config):
 
 
 def model_factory(config: dict) -> nn.Module:
+    '''
+    Returns the model based on the given config's type
+    '''
     if config["type"] == "MultiLayerPerceptron":
         return MultiLayerPerceptron(config)
     elif config["type"] == "DuelingNetwork":
@@ -423,6 +429,74 @@ def model_factory(config: dict) -> nn.Module:
         return ConvolutionalNetwork(config)
     elif config["type"] == "EgoAttentionNetwork":
         return EgoAttentionNetwork(config)
+    # elif config["type"] == "head_mlp":
+    #     return MultiLayerPerceptron(config)
     else:
         raise ValueError("Unknown model type")
 
+EgoAttentionNetwork_config = {
+            "in": None,
+            "out": None,
+            "presence_feature_idx": 0,
+            "embedding_layer": {
+                "in": None,
+                "type": "MultiLayerPerceptron",
+                "layers": [128, 128, 128],
+                "out": None,
+                "reshape": False
+            },
+            "others_embedding_layer": {
+                "in": None,
+                "type": "MultiLayerPerceptron",
+                "layers": [128, 128, 128],
+                "out": None,
+                "reshape": False
+            },
+            "self_attention_layer": {
+                "type": "SelfAttention",
+                "feature_size": 128,
+                "heads": 4
+            },
+            "attention_layer": {
+                "type": "EgoAttention",
+                "feature_size": 128,
+                "heads": 4
+            },
+            "output_layer": {
+                "in": None,
+                "type": "MultiLayerPerceptron",
+                "layers": [128],
+                "out": None,
+                "reshape": False
+            },
+        }
+
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+import gym
+class EgoAttentionNetwork_feature_extractor(
+                            # EgoAttentionNetwork,
+                            BaseFeaturesExtractor):
+    def __init__(self,observation_space: gym.spaces.Box, config = EgoAttentionNetwork_config,features_dim = 32):
+        # super(EgoAttentionNetwork_feature_extractor,self).__init__(self,observation_space,features_dim = 32)
+        # EgoAttentionNetwork.__init__(self,config=config)
+        super(EgoAttentionNetwork_feature_extractor,self).__init__(observation_space,features_dim=features_dim)
+        self.config = config
+        self.config["in"] = observation_space.shape[1] #spaces.Box(shape=(self.vehicles_count, len(self.features))    
+        self.config["out"] = features_dim
+        self.egoAttentionNetwork = EgoAttentionNetwork(config=self.config)
+
+        # self.activation = nn.ReLU()
+
+
+
+
+
+    def forward(self,observations: torch.Tensor)->torch.Tensor:
+        ego_embedded_att, _ = self.egoAttentionNetwork.forward_attention(observations)
+        return self.egoAttentionNetwork.output_layer(ego_embedded_att)
+
+
+
+
+
+    
