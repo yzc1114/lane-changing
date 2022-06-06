@@ -12,14 +12,17 @@ def do_test_env():
         done = False
         steps = 0
         random.seed(0)
+        total_reward = 0
         while not done:
             action = np.random.randint(5)
-            obs, reward, done, _ = e.step(action)
+            obs, reward, done, _ = e.step(4)
             print(f"reward: {reward}")
+            total_reward += reward
             # print(obs.shape)
             e.render()
             steps += 1
             print(steps)
+        print(total_reward)
 
 
 if __name__ == '__main__':

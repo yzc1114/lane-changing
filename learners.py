@@ -157,7 +157,7 @@ class LearnerFactory(object):
 
     @classmethod
     def A2C_GridOccupancy(cls, env) -> Tuple[str, BaseAlgorithm]:
-        learner_name = "A2C_Kinematics"
+        learner_name = "A2C_GridOccupancy"
         policy_kwargs = dict(
             features_extractor_class=GridOccupancyCNN,
             features_extractor_kwargs=dict(features_dim=512),

@@ -17,6 +17,7 @@ kinematics_env_config = {
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "high_speed_reward": 0.2,
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 5,
@@ -34,6 +35,7 @@ GrayscaleObservation_env_config = {
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "high_speed_reward": 0.2,
     "observation": {
         "type": "GrayscaleObservation",
         "vehicles_count": 5,
@@ -53,6 +55,7 @@ TimeToCollision_env_config ={
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "high_speed_reward": 0.2,
     "observation": {
         "type": "TimeToCollision",
         "vehicles_count": 5,
@@ -69,6 +72,7 @@ OccupancyGrid_env_config ={
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "high_speed_reward": 0.2,
     "observation": {
         "type": "OccupancyGrid",
         "features": ["presence", "x", "y", "vx", "vy"],

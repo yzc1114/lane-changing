@@ -16,7 +16,7 @@ mpl.rcParams['font.size'] = 15
 mpl.rcParams['font.family'] = 'Arial'
 
 learners = ["PPO", "DQN", "A2C"]
-obs_types: List[ObsType] = [ObsType.Kinematics, ObsType.TimeToCollision]
+obs_types: List[ObsType] = [ObsType.Kinematics, ObsType.TimeToCollision, ObsType.OccupancyGrid]
 
 
 def inside_ticks(ax, x=True, y=True):
@@ -39,7 +39,7 @@ def plot_compare_learner(ax, learner2values, y_label):
     y_major_loc = plt_ticker.MultipleLocator(10)
     ax.yaxis.set_major_locator(y_major_loc)
     plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%d'))
-    x_major_loc = plt_ticker.MultipleLocator(base=2)
+    x_major_loc = plt_ticker.MultipleLocator(base=25)
     ax.xaxis.set_major_locator(x_major_loc)
     for learner in learners:
         y_data = learner2values[learner]
@@ -49,7 +49,7 @@ def plot_compare_learner(ax, learner2values, y_label):
                 linewidth='2',
                 label=learner)
     ax.set_ylabel(y_label)
-    ax.set_xlabel('Training Step (10k)')
+    ax.set_xlabel('Training Step (1k)')
     ax.legend(bbox_to_anchor=(1, 0), loc='lower right')
 
 
@@ -61,7 +61,7 @@ def plot_compare_obs(ax, obs2values, y_label):
     y_major_loc = plt_ticker.MultipleLocator(10)
     ax.yaxis.set_major_locator(y_major_loc)
     plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%d'))
-    x_major_loc = plt_ticker.MultipleLocator(base=2)
+    x_major_loc = plt_ticker.MultipleLocator(base=25)
     ax.xaxis.set_major_locator(x_major_loc)
     for obs_type in obs_types:
         obs_type_str = obs_type_2_string(obs_type)
@@ -72,7 +72,7 @@ def plot_compare_obs(ax, obs2values, y_label):
                 linewidth='2',
                 label=obs_type_str)
     ax.set_ylabel(y_label)
-    ax.set_xlabel('Training Step (10k)')
+    ax.set_xlabel('Training Step (1k)')
     ax.legend(bbox_to_anchor=(1, 0), loc='lower right')
 
 
@@ -124,8 +124,8 @@ def plot():
             obs_type_2_rewards[obs_type] = learner_2_rewards[learner]
             obs_type_2_ep_lengths[obs_type] = learner_2_ep_lengths[learner]
 
-        do_one(f"compare_obs_{learner}_reward", lambda ax: plot_compare_obs(ax, obs_type_2_rewards, "Mean Reward"))
-        do_one(f"compare_obs_{learner}_ep_length", lambda ax: plot_compare_obs(ax, obs_type_2_ep_lengths, "Mean Episode Length"))
+        do_one(f"compare_obs_{learner}_reward", lambda ax: plot_compare_obs(ax, obs_type_2_rewards, learner + " Mean Reward"))
+        do_one(f"compare_obs_{learner}_ep_length", lambda ax: plot_compare_obs(ax, obs_type_2_ep_lengths, learner + " Mean Episode Length"))
 
 
 if __name__ == '__main__':
