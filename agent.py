@@ -44,8 +44,8 @@ class Agent(object):
         """
         parser = argparse.ArgumentParser(description='Training parameters')
         parser.add_argument('--mode', default='train', type=str, choices=['train', 'test'])  # mode = 'train' or 'test'
-        parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1, 2, 3], help="observation type, 0:GrayscaleObservation,1: kinematics")
-        parser.add_argument('--learner_type', type=str, default='PPO',
+        parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1, 2, 3], help="observation type, 0:GrayscaleObservation,1: kinematics,2: TimeToCollision,3: OccupancyGrid")
+        parser.add_argument('--learner_type', type=str, default='EGO',
                             help="Algorithm to train from {PPO, A2C, DQN, DQN_CNN, DDPG, TD3, EGO}")
         parser.add_argument('--parallels', type=int, default=1)
         parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
@@ -144,5 +144,5 @@ def main():
         agent.train()
 
 if __name__ == "__main__":
-    # main()
-    evaluate()
+    main()
+    # evaluate()

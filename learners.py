@@ -39,6 +39,8 @@ def make_learner_fn(learner_type: LearnerType, obs_type):
             LearnerType.DQN: LearnerFactory.DQN_TTC,
             LearnerType.PPO: LearnerFactory.PPO_TTC,
             LearnerType.A2C: LearnerFactory.A2C_TTC,
+            LearnerType.EGO: LearnerFactory.EGO_TTC,
+
         }
     }
     return learner_map[obs_type][learner_type]
@@ -224,10 +226,10 @@ class LearnerFactory(object):
         learner_name = "EGO_Kinematics"
         model = DQN('MlpPolicy', env,
                     policy_kwargs=dict(features_extractor_class=EgoAttentionNetwork_feature_extractor,
-                    net_arch = [32]),
+                    net_arch = [128,64,32]),
                     learning_rate=5e-4,
-                    buffer_size=15000,
-                    learning_starts=200,
+                    buffer_size=int(1e6),
+                    learning_starts=2000,
                     batch_size=32,
                     gamma=0.8,
                     train_freq=1,
@@ -235,5 +237,23 @@ class LearnerFactory(object):
                     target_update_interval=50,
                     verbose=1,
                     tensorboard_log="./log/")
+        return learner_name, model
+
+    @classmethod
+    def EGO_TTC(cls, env) -> Tuple[str, BaseAlgorithm]:
+        learner_name = "EGO_TTC"
+        model = DQN('MlpPolicy', env,
+                    policy_kwargs=dict(features_extractor_class=EgoAttentionNetwork_feature_extractor,net_arch=[16]),
+                    learning_rate=5e-4,
+                    buffer_size=int(1e6),
+                    learning_starts=2000,
+                    batch_size=64,
+                    exploration_fraction=0.1,
+                    gamma=0.8,
+                    train_freq=1,
+                    gradient_steps=1,
+                    target_update_interval=50,
+                    verbose=1,
+                    tensorboard_log="./log/TTC/")
         return learner_name, model
 
