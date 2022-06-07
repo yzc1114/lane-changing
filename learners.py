@@ -7,7 +7,6 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import SubprocVecEnv,DummyVecEnv
 from typing import Tuple
 from env import ObsType
-from custom_model import GridOccupancyCNN
 from models import *
 
 

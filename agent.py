@@ -21,23 +21,6 @@ warnings.filterwarnings("ignore")
  
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-
-# class TqdmCallback(BaseCallback):
-#     def __init__(self):
-#         super().__init__()
-#         self.progress_bar = None
-#
-#     def _on_training_start(self):
-#         self.progress_bar = tqdm(total=self.locals['total_timesteps'])
-#
-#     def _on_step(self):
-#         self.progress_bar.update(1)
-#         return True
-#
-#     def _on_training_end(self):
-#         self.progress_bar.close()
-#         self.progress_bar = None
-
 class Agent(object):
     @staticmethod
     def parse_args():
@@ -52,7 +35,6 @@ class Agent(object):
         parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
         parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
         parser.add_argument('--init_weight_path', type=str, default=None, help="initial weight path.")
-        parser.add_argument('--render', dest='render', action='store_true', help="Render environment while training")
         parser.set_defaults(render=True)
         return parser.parse_args()
 
@@ -135,7 +117,7 @@ class Agent(object):
 
 def evaluate():
     agent = Agent()
-    agent.test(model_path='weights/DQN_TTC_archive/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
+    agent.test(model_path='weights/EGO_Kinematics_1654587992_best/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
 
 def main():
     agent = Agent()

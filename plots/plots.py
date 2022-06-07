@@ -15,9 +15,21 @@ mpl.rcParams['ps.fonttype'] = 42
 mpl.rcParams['font.size'] = 15
 mpl.rcParams['font.family'] = 'Arial'
 
-learners = ["PPO", "DQN", "A2C"]
+learners = ["PPO", "DQN", "A2C", "Attention"]
 obs_types: List[ObsType] = [ObsType.Kinematics, ObsType.TimeToCollision, ObsType.OccupancyGrid]
 
+# learner_2_color = {
+#     "PPO": "blue",
+#     "DQN": "red",
+#     "A2C": "green",
+#     "Attention": "purple"
+# }
+
+# obs_type_2_color = {
+#     ObsType.Kinematics: "blue",
+#     ObsType.TimeToCollision: "red",
+#     ObsType.OccupancyGrid: "green"
+# }
 
 def inside_ticks(ax, x=True, y=True):
     if y:
@@ -42,11 +54,14 @@ def plot_compare_learner(ax, learner2values, y_label):
     x_major_loc = plt_ticker.MultipleLocator(base=25)
     ax.xaxis.set_major_locator(x_major_loc)
     for learner in learners:
+        if learner not in learner2values:
+            continue
         y_data = learner2values[learner]
         ax.plot(x_data, y_data,
                 marker=None,
                 linestyle='solid',
                 linewidth='2',
+                # color=learner_2_color[learner],
                 label=learner)
     ax.set_ylabel(y_label)
     ax.set_xlabel('Training Step (1k)')
@@ -65,11 +80,14 @@ def plot_compare_obs(ax, obs2values, y_label):
     ax.xaxis.set_major_locator(x_major_loc)
     for obs_type in obs_types:
         obs_type_str = obs_type_2_string(obs_type)
+        if obs_type not in obs2values:
+            continue
         y_data = obs2values[obs_type]
         ax.plot(x_data, y_data,
                 marker=None,
                 linestyle='solid',
                 linewidth='2',
+                # color=obs_type_2_color[obs_type],
                 label=obs_type_str)
     ax.set_ylabel(y_label)
     ax.set_xlabel('Training Step (1k)')
@@ -94,6 +112,8 @@ def load_learner_values_data(obs_type: ObsType):
     for learner in learners:
         reward_filepath = path(reward_template % learner)
         ep_length_filepath = path(ep_length_template % learner)
+        if not os.path.exists(ep_length_filepath) or not os.path.exists(reward_filepath):
+            continue
         learner_2_reward_values[learner] = load_pd_to_y_data(reward_filepath)
         learner_2_ep_length_values[learner] = load_pd_to_y_data(ep_length_filepath)
     return learner_2_reward_values, learner_2_ep_length_values
@@ -122,6 +142,8 @@ def plot():
         obs_type_2_ep_lengths = dict()
         for obs_type in obs_types:
             learner_2_rewards, learner_2_ep_lengths = obs_type_2_learner_data[obs_type]
+            if learner not in learner_2_rewards:
+                continue
             obs_type_2_rewards[obs_type] = learner_2_rewards[learner]
             obs_type_2_ep_lengths[obs_type] = learner_2_ep_lengths[learner]
 
