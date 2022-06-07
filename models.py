@@ -471,20 +471,29 @@ EgoAttentionNetwork_config = {
             },
         }
 
+DuelNetwork_config = {"in": 32,
+                "base_module": {"type": "MultiLayerPerceptron", "out": None},
+                "out": 5}
+
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import gym
 class EgoAttentionNetwork_feature_extractor(
                             # EgoAttentionNetwork,
                             BaseFeaturesExtractor):
-    def __init__(self,observation_space: gym.spaces.Box, config = EgoAttentionNetwork_config,features_dim = 128):
+    def __init__(self,observation_space: gym.spaces.Box, ego_config = EgoAttentionNetwork_config,duel_config = DuelNetwork_config,features_dim = 5):
         # super(EgoAttentionNetwork_feature_extractor,self).__init__(self,observation_space,features_dim = 32)
         # EgoAttentionNetwork.__init__(self,config=config)
         super(EgoAttentionNetwork_feature_extractor,self).__init__(observation_space,features_dim=features_dim)
-        self.config = config
-        self.config["in"] = observation_space.shape[1] #spaces.Box(shape=(self.vehicles_count, len(self.features))  
+        self.ego_config = ego_config
+        self.duel_config = duel_config
+
+        self.ego_config["in"] = observation_space.shape[1] #spaces.Box(shape=(self.vehicles_count, len(self.features))  
         # self.config["in"] = int(np.prod(observation_space.shape))  
-        self.config["out"] = features_dim
-        self.egoAttentionNetwork = EgoAttentionNetwork(config=self.config)
+        self.ego_config["out"] = features_dim
+
+        self.duel_config["in"] = features_dim
+        self.egoAttentionNetwork = EgoAttentionNetwork(config=self.ego_config)
+        self.duelnetwork = DuelingNetwork(config=self.duel_config)
 
         # self.activation = nn.ReLU()
 
@@ -494,8 +503,9 @@ class EgoAttentionNetwork_feature_extractor(
 
     def forward(self,observations: torch.Tensor)->torch.Tensor:
         ego_embedded_att, _ = self.egoAttentionNetwork.forward_attention(observations)
-        return self.egoAttentionNetwork.output_layer(ego_embedded_att)
-
+        ego_out = self.egoAttentionNetwork.output_layer(ego_embedded_att)
+        x = self.duelnetwork(ego_out)
+        return x
 
 
 
