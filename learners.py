@@ -39,7 +39,6 @@ def make_learner_fn(learner_type: LearnerType, obs_type):
             LearnerType.DQN: LearnerFactory.DQN_TTC,
             LearnerType.PPO: LearnerFactory.PPO_TTC,
             LearnerType.A2C: LearnerFactory.A2C_TTC,
-            LearnerType.EGO: LearnerFactory.EGO_TTC,
 
         }
     }
@@ -226,7 +225,7 @@ class LearnerFactory(object):
         learner_name = "EGO_Kinematics"
         model = DQN('MlpPolicy', env,
                     policy_kwargs=dict(features_extractor_class=EgoAttentionNetwork_feature_extractor,
-                    net_arch = [128,64,32]),
+                    net_arch = []),
                     learning_rate=5e-4,
                     buffer_size=int(1e6),
                     learning_starts=2000,
@@ -236,7 +235,7 @@ class LearnerFactory(object):
                     gradient_steps=1,
                     target_update_interval=50,
                     verbose=1,
-                    tensorboard_log="./log/")
+                    tensorboard_log="./log/EGO_Duel")
         return learner_name, model
 
     @classmethod

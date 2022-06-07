@@ -46,7 +46,7 @@ class Agent(object):
         parser.add_argument('--mode', default='train', type=str, choices=['train', 'test'])  # mode = 'train' or 'test'
         parser.add_argument('--obs_type', type=int, default=1, choices=[0, 1, 2, 3], help="observation type, 0:GrayscaleObservation,1: kinematics,2: TimeToCollision,3: OccupancyGrid")
         parser.add_argument('--learner_type', type=str, default='EGO',
-                            help="Algorithm to train from {PPO, A2C, DQN, EGO}")
+                            help="Algorithm to train from {PPO, A2C, DQN, EGO, DQN_CNN}")
         parser.add_argument('--parallels', type=int, default=1)
         parser.add_argument('--nb_steps', type=int, default=int(2000*50), help="Number of training steps")
         parser.add_argument('--eval_interval_steps', type=int, default=500, help="Eval and checkpoint interval steps")
@@ -134,7 +134,7 @@ class Agent(object):
 
 def evaluate():
     agent = Agent()
-    agent.test(model_path='weights/A2C_TTC_archive/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
+    agent.test(model_path='weights/DQN_TTC_1654527051_best/best_model.zip') #model_path="weights/PPO_Kinematics_1654398777_best/best_model.zip"
 
 def main():
     agent = Agent()
