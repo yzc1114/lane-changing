@@ -28,8 +28,8 @@ def inside_ticks(ax, x=True, y=True):
         ax.tick_params(axis="x", which='minor', direction="in", length=2)
 
 
-def save_fig(fig, filepath):
-    fig.savefig(filepath, dpi=1200, format='pdf', bbox_inches='tight')
+def save_fig(fig, filepath, mode="pdf"):
+    fig.savefig(filepath, dpi=400, format=mode, bbox_inches='tight')
 
 def plot_compare_learner(ax, learner2values, y_label):
     x_data = np.arange(100) # training step is 100_000
@@ -103,7 +103,8 @@ def plot():
     def do_one(name, plot_func):
         fig, ax = plt.subplots()
         plot_func(ax)
-        save_fig(fig, os.path.join("results", f"{name}.pdf"))
+        # save_fig(fig, os.path.join("results", f"{name}.pdf"), mode="pdf")
+        save_fig(fig, os.path.join("results", f"{name}.png"), mode="png")
 
     obs_type_2_learner_data = dict()
     for obs_type in obs_types:

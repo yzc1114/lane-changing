@@ -14,7 +14,6 @@ kinematics_env_config = {
     "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
-    "high_speed_reward": 0.2,
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
@@ -53,7 +52,6 @@ TimeToCollision_env_config ={
     "id": "highway-fast-v0",
     "import_module": "highway_env",
     "lanes_count": 3,
-    "high_speed_reward": 0.2,
     "vehicles_count": 50,  # 环境车数量
     "duration": 50,  # 每个episode的step数
     "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
